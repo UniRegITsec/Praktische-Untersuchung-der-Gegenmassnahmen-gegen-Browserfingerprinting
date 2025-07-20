@@ -3,12 +3,16 @@
 Dieses Github Repository bildet die Basis für die Testwebsite der Bachelorarbeit:
 
 	"Praktische Untersuchung der Gegenmaßnahmen gegen Browserfingerprinting"
+ 
 
 Absolviert an der Universität Regensburg von Dominik I.
+
 
 Die Testwebsite wird gehostet unter:
 
 https://uniregitsec.github.io/Praktische-Untersuchung-der-Gegenmassnahmen-gegen-Browserfingerprinting/
+
+
 
 Das Fingerprintingtool umfasst:
 
