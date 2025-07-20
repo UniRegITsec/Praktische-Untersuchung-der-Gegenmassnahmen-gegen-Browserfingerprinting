@@ -86,12 +86,6 @@ WEBGL & WEBGL2:
 
 		shading Language Version
 
-		WebGL2 Vendor
-
-		WebGL2 Renderer
-
-		max draw buffers
-
 Audio:
 
 		Audio-sum
@@ -120,7 +114,4 @@ Mobile:
 		
 
 
-Docker:
-
-	docker run -d -p 80:80 --name my-nginx-website -v "$(pwd)/my-website:/usr/share/nginx/html:ro" nginx:latest
 
