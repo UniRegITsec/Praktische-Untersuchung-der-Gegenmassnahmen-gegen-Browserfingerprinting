@@ -13,7 +13,6 @@ Die Testwebsite wird gehostet unter:
 https://uniregitsec.github.io/Praktische-Untersuchung-der-Gegenmassnahmen-gegen-Browserfingerprinting/
 
 
-
 Das Fingerprintingtool umfasst:
 
 
@@ -117,5 +116,9 @@ Mobile:
 		touchStart
 		
 
+Die Grundidee der Website wurde von :
 
+	https://github.com/amtzespinosa/fingerprinter
+	
+übernommen.
 
