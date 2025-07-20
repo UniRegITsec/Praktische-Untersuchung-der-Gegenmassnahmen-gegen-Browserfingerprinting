@@ -386,18 +386,11 @@ function WebGLBasics() {
             reportString += "Unmasked Renderer: " + gl.getParameter(debugExtension.UNMASKED_RENDERER_WEBGL) + "<br><br>"; // Unmaskierter Renderer
         }
 
-        reportString += "GL Version: " + gl.getParameter(gl.VERSION) + "<br><br>"; // WebGL-Version
         reportString += "Shading Language Version: " + gl.getParameter(gl.SHADING_LANGUAGE_VERSION) + "<br><br>"; // Shader-Sprachversion
         reportString += "Vendor: " + gl.getParameter(gl.VENDOR) + "<br><br>"; // Hersteller
         reportString += "Renderer: " + gl.getParameter(gl.RENDERER) + "<br><br>"; // Renderer
 
-        const glContextAttributes = gl.getContextAttributes(); // Ruft die Kontextattribute ab
-        reportString += "Context Attributes:<br>"; // Fügt eine Überschrift für die Attribute hinzu
-        for (const att in glContextAttributes) { // Iteriert über die Attribute
-            if (glContextAttributes.hasOwnProperty(att)) { // Prüft, ob das Attribut eine eigene Eigenschaft ist
-                reportString += "  " + att + ": " + glContextAttributes[att] + "<br>"; // Fügt jedes Attribut mit Wert hinzu
-            }
-        }
+
     } else { // Falls WebGL nicht unterstützt wird
         reportString = "WebGL wird nicht unterstützt."; // Setzt eine Fehlermeldung
     }
@@ -405,51 +398,9 @@ function WebGLBasics() {
     return reportString; // Gibt den formatierten String zurück
 }
 
-// 8. WebGL2-Fingerprinting
-// Diese asynchrone Funktion sammelt Informationen über die WebGL2-Fähigkeiten des Geräts.
-// Sie gibt die Daten als formatierten String zurück.
-async function fingerprint_webgl2() {
-    // Innere asynchrone Funktion zur Berechnung des Fingerabdrucks
-    async function calculateWebGL2Fingerprint() {
-        "use strict"; // Aktiviert den strikten Modus
-        try { // Fehlerbehandlung für den gesamten Code-Block
-            const canvas = document.createElement("canvas"); // Erstellt ein neues Canvas-Element
-            canvas.width = 256; // Setzt die Breite auf 256 Pixel
-            canvas.height = 128; // Setzt die Höhe auf 128 Pixel
-            canvas.style.display = "none"; // Verbirgt das Canvas im DOM
-            document.body.appendChild(canvas); // Fügt das Canvas temporär zum DOM hinzu
 
-            const gl = canvas.getContext("webgl2"); // Ruft den WebGL2-Kontext ab
-            if (!gl) { // Prüft, ob WebGL2 unterstützt wird
-                throw new Error("WebGL2 wird nicht unterstützt"); // Wirft einen Fehler, falls nicht unterstützt
-            }
 
-            const debugInfo = gl.getExtension("WEBGL_debug_renderer_info"); // Ruft die Debug-Erweiterung ab
-            const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : "Nicht verfügbar"; // Unmaskierter Hersteller, falls verfügbar
-            const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Nicht verfügbar"; // Unmaskierter Renderer, falls verfügbar
-            const version = gl.getParameter(gl.VERSION); // WebGL2-Version
-            const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE); // Maximale Texturgröße
-            const maxDrawBuffers = gl.getParameter(gl.MAX_DRAW_BUFFERS); // Maximale Anzahl von Draw-Buffern
-
-            // Baue den Ausgabestring
-            let strOut = 
-                "WebGL2 Vendor: " + vendor + "<br><br>" + // Hersteller
-                "WebGL2 Renderer: " + renderer + "<br><br>" + // Renderer
-                "WebGL2 Version: " + version + "<br><br>" + // Version
-                "Max Texture Size: " + maxTextureSize + "<br><br>" + // Maximale Texturgröße
-                ".atomic Draw Buffers: " + maxDrawBuffers + "<br><br>"; // Maximale Draw-Buffer
-
-            document.body.removeChild(canvas); // Entfernt das Canvas aus dem DOM
-            return strOut; // Gibt den formatierten String zurück
-        } catch (err) { // Falls ein Fehler auftritt
-            return "error: " + err.message; // Gibt eine Fehlermeldung mit Details zurück
-        }
-    }
-
-    return await calculateWebGL2Fingerprint(); // Ruft die innere Funktion auf und gibt das Ergebnis zurück
-}
-
-// 9. Fonts-Fingerprinting
+// 8. Fonts-Fingerprinting
 // Diese Funktion überprüft, welche Schriftarten auf dem Gerät des Benutzers installiert sind.
 // Sie gibt eine Liste der nicht verfügbaren Schriftarten als String zurück.
 function fingerprint_fonts() {
@@ -487,7 +438,7 @@ function fingerprint_fonts() {
     }
 }
 
-// 10. Touch-Support-Fingerprinting
+// 9. Touch-Support-Fingerprinting
 // Diese Funktion überprüft die Touchscreen-Fähigkeiten des Geräts.
 // Sie gibt die Ergebnisse als formatierten String zurück.
 function fingerprint_touchSupport() {
@@ -522,6 +473,83 @@ function fingerprint_touchSupport() {
     }
 }
 
+
+
+// Hilfsfunktion: Konvertiert einen UTF‑8-String in ein ArrayBuffer
+// (benötigt für den Input der crypto.subtle.digest-Funktion)
+function str2ab(str) {
+  // TextEncoder kodiert String in Uint8Array (UTF‑8)
+  return new TextEncoder().encode(str);
+}
+
+// Hilfsfunktion: Konvertiert ein ArrayBuffer-Ergebnis in einen Hex-String
+// (macht den Binär-Hash lesbar)
+function ab2hex(buffer) {
+  const bytes = new Uint8Array(buffer);                    // Byte-Array aus dem Buffer
+  return Array
+    .from(bytes)                                           // In JS-Array umwandeln
+    .map(b => b.toString(16).padStart(2, '0'))             // Jedes Byte in 2‑stelligen Hex
+    .join('');                                             // Alle Hex-Werte aneinanderreihen
+}
+
+/**
+ * Generiert den finalen Browser-Fingerprint
+ * =========================================
+ * 1) Ruft alle synchronen Fingerprinting-Funktionen auf
+ * 2) Wartet auf die asynchronen Funktionen (Intl, Audio)
+ * 3) Fügt alle Teilergebnisse in einer festen Reihenfolge zu einem einzigen String zusammen
+ * 4) Hashes den kombinierten String per SHA‑256
+ * 5) Gibt das Ergebnis als Hex-String zurück
+ */
+async function generateFinalFingerprint() {
+  // 1) Synchrone Teile: liefern direkt einen String
+  const nav    = fingerprint_navigator();           // Navigator-Eigenschaften
+  const screen = fingerprint_screen();              // Bildschirm- und Fensterdaten
+  const canvas = fingerprint_canvas();              // Canvas-Data-URL
+  const webgl  = WebGLBasics();                     // WebGL-Grunddaten
+  const fonts  = fingerprint_fonts();               // Verfügbare / nicht verfügbare Fonts
+  const touch  = fingerprint_touchSupport();        // Touch-Support-Informationen
+
+  // 2) Asynchrone Teile: müssen per await abgefragt werden
+  const intl   = await displayIntlFingerprint();    // Intl-Locale & DateTimeFormat
+  const audio  = await displayAudioFingerprint();   // Audio-Rendering-Daten
+
+  // 3) Kombiniere alle Teil-Strings
+  //    Wir nutzen '||' als Trenner, damit kein Teil zufällig mit dem nächsten verschmilzt
+  const combined = [
+    nav,
+    intl,
+    screen,
+    canvas,
+    audio,
+    webgl,
+    fonts,
+    touch
+  ].join('||');
+
+  // 4) Erzeuge den SHA‑256-Hash des kombinierten Strings
+  //    crypto.subtle.digest liefert ein Promise mit einem ArrayBuffer
+  const hashBuffer = await crypto.subtle.digest(
+    'SHA-256',           // Hash-Algorithmus
+    str2ab(combined)     // Eingabe als ArrayBuffer
+  );
+
+  // 5) Konvertiere das ArrayBuffer-Ergebnis in einen Hex-String und gib ihn zurück
+  return ab2hex(hashBuffer);
+}
+
+// Beispielaufruf, um den Fingerprint zu erzeugen und in der Konsole auszugeben
+generateFinalFingerprint()
+  .then(fp => {
+    // fp ist jetzt dein fertiger Hash‑String
+    document.getElementById('fingerprint').innerText = fp;
+  })
+  .catch(err => {
+    console.error('Fehler bei der Fingerprint-Generierung:', err);
+  });
+
+
+
 // Hauptfunktion zur Ausführung aller Fingerprinting-Methoden
 // Diese asynchrone Funktion ruft alle Fingerprinting-Funktionen auf und setzt die Ergebnisse in DOM-Elemente.
 async function main() {
@@ -532,9 +560,9 @@ async function main() {
     const canvasData = fingerprint_canvas(); // Ruft Canvas-Daten ab
     const audioData = await displayAudioFingerprint(); // Ruft Audio-Daten asynchron ab
     const webglData = WebGLBasics(); // Ruft WebGL-Daten ab
-    const webgl2Data = await fingerprint_webgl2(); // Ruft WebGL2-Daten asynchron ab
     const fontsData = fingerprint_fonts(); // Ruft Fonts-Daten ab
     const touchSupportData = fingerprint_touchSupport(); // Ruft Touch-Support-Daten ab
+	//const finalFingerprint = generateFinalFingerprint(); // Ruft End Fingerprint ab
 
     // Setzt die Daten in die entsprechenden DOM-Elemente
     setInnerHTML('navigator', navigatorData); // Navigator-Daten in Element mit ID "navigator"
@@ -544,9 +572,11 @@ async function main() {
     setInnerHTML('canvas', canvasData); // Canvas-Daten (Data-URL) in Element mit ID "canvas"
     setInnerHTML('audio', audioData); // Audio-Daten in Element mit ID "audio"
     setInnerHTML('webgl', `<pre>${webglData}</pre>`); // WebGL-Daten in Element mit ID "webgl", umbrochen in <pre> für bessere Lesbarkeit
-    setInnerHTML('webgl2', webgl2Data); // WebGL2-Daten in Element mit ID "webgl2"
     setInnerHTML('fonts', fontsData); // Fonts-Daten in Element mit ID "fonts"
     setInnerHTML('mobile', touchSupportData); // Touch-Support-Daten in Element mit ID "mobile"
+	
+	
+//	setInnerHTML('fingerprint', finalFingerprint); // Touch-Support-Daten in Element mit ID "mobile"
 }
 
 // Starte die Hauptfunktion nach dem Laden des DOM
